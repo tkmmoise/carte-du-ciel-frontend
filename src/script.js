@@ -9,7 +9,7 @@ import { Stars } from "./Stars";
 // Charger les étoiles depuis l'API
 async function fetchStars() {
   try {
-    const response = await fetch('http://localhost:3000/api/stars');
+    const response = await fetch('http://localhost:3000/api/stars/filters');
     const allstars = await response.json();
 
     //console.log('closestStars:', closestStars);
@@ -21,7 +21,7 @@ async function fetchStars() {
 }
 
 async function createSky() {
-  const filtersStars = await fetchStars();
+  const { closestStars, brightestStars, hottestStars, largestStars } = await fetchStars();
   /**
    * Base
   */
@@ -55,7 +55,11 @@ async function createSky() {
    * Starts
    */
   const stars = new Stars({
-    visibleStars: filtersStars,
+    visibleStars: visibleStars,
+    closestStars: closestStars,
+    hottestStars: hottestStars,
+    largestStars: largestStars,
+    brightestStars: brightestStars,
     debug: { active: true, gui: gui },
     settings: {
       starMin: 2.3,
