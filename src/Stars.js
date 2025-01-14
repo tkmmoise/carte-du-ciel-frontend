@@ -5,8 +5,6 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { PointTextHelper } from "@jniac/three-point-text-helper";
 
-import { visibleStars } from "./data/visibleStarsFormatted.js";
-import { constelations } from "./data/ConstellationLines.js";
 import { constelationsPoints } from "./data/ConstellationPoints.js";
 
 import vertexShader from "./shader/vertex.glsl";
@@ -18,7 +16,6 @@ class StarsConstructor {
     this.debug = {
       active: false,
       gui: null,
-      showHelpers: false,
       ...params?.debug,
     };
 
@@ -26,21 +23,21 @@ class StarsConstructor {
       earthTilt: true,
       showConstellations: false,
       constellationColor: new THREE.Color(0xd1d9e6),
-      constellationLineWidth: 2,
+      constellationLineWidth: 1,
       attenuation: false,
       starMin: 2.3,
       starMax: 13.9,
       starFadeDactor: -1.4,
       starMinBrightnes: 6.5,
+      // --- showtarsConfig
+      showMenu: true,
+      starFilterMenu: 'all',
       ...params?.settings,
     };
 
-    // Stars
-    this.stars = params.visibleStars;
-    this.closestStars = params?.closestStars;
-    this.brightestStars = params?.brightestStars;
-    this.hottestStars = params?.hottestStars;
-    this.largestStars = params?.largestStars;
+    // Stars (Data)
+    this.data = params.data;
+    this.stars = params.data.visibleStars;
 
     this.constelationsGroup = new THREE.Group();
     this.constelationsGroup.visible = this.settings.showConstellations;
@@ -51,9 +48,19 @@ class StarsConstructor {
     // Debug
     if (this.debug.active) {
       this.debug.gui = this.debug.gui ? this.debug.gui : new dat.GUI();
-      this.debugFolder = this.debug.gui.addFolder("stars");
+      this.debugFolder = this.debug.gui.addFolder("Debug");
       this.debugInit();
     }
+
+    // ShowMenu
+    if (this.settings.showMenu) {
+      this.debug.gui = this.debug.gui ? this.debug.gui : new dat.GUI();
+      this.showMenuFolder = this.debug.gui.addFolder("Menu");
+      this.initShowMenu();
+    }
+
+    // Callback onUpdateGeometry (for parent instance)
+    this.onUpdateGeometry = params.onUpdateGeometry;
   }
 
   setGeometry() {
@@ -116,9 +123,6 @@ class StarsConstructor {
       };
 
       this.debugFolder
-        .add(this.settings, "showConstellations")
-        .onChange((value) => (this.constelationsGroup.visible = value));
-      this.debugFolder
         .add(this.settings, "constellationLineWidth", 0.0, 20.0, 1)
         .onChange((value) => {
           for (const line of this.constelationsGroup.children) {
@@ -149,11 +153,57 @@ class StarsConstructor {
         .onChange(() => guiChanged());
     }
   }
+
+  initShowMenu() {
+    if (this.settings.showMenu) {
+      this.showMenuFolder
+        .add(this.settings, "showConstellations")
+        .onChange((value) => (this.constelationsGroup.visible = value));
+      
+      this.showMenuFolder
+        .add(this.settings, "starFilterMenu", ['all', 'closest', 'brightest', 'hottest', 'largest'])
+        .onChange((value) => {
+          this.filterStars(value);
+        });
+    }
+  }
+
+  filterStars(value) {
+    switch (value) {
+      case "all":
+        this.stars = this.data.visibleStars;
+        break;
+      case "closest":
+        this.stars = this.data.closestStars;
+        break;
+      case "brightest":
+        this.stars = this.data.brightestStars;
+        break;
+      case "hottest":
+        this.stars = this.data.hottestStars;
+        break;
+      case "largest":
+        this.stars = this.data.largestStars;
+        break;
+    }
+  
+    // Mets à jour la géométrie
+    this.setGeometry();
+
+    // Notifie l'instance parent de Stars
+    if (this.onUpdateGeometry) {
+      this.onUpdateGeometry(this.geometry);
+    }
+  }
+  
 }
 
 export class Stars extends THREE.Points {
   constructor(params) {
-    const stars = new StarsConstructor(params);
+    const stars = new StarsConstructor({
+      ...params,
+      onUpdateGeometry: (newGeometry) => this.updateGeometry(newGeometry),
+    });
 
     super(stars.geometry, stars.material);
 
@@ -161,29 +211,6 @@ export class Stars extends THREE.Points {
     this.debug = stars.debug;
     this.stars = stars.stars;
     this.constelationsGroup = stars.constelationsGroup;
-
-    // showMenu
-    this.visibleStars = params.visibleStars;
-    this.closestStars = params.closestStars;
-    this.brightestStars = params.brightestStars;
-    this.hottestStars = params.hottestStars;
-    this.largestStars = params.largestStars;
-
-    this.showMenu = true;
-    this.menuObj = {
-      starFilterMenu: "all"
-    }
-
-    // ShowMenu
-    if (this.showMenu) {
-      this.debug.gui = this.debug.gui ? this.debug.gui : new dat.GUI();
-      this.debugMenu = this.debug.gui.addFolder("Menu");
-      this.debugMenu
-        .add(this.menuObj, "starFilterMenu", ['all', 'closest', 'brightest', 'hottest', 'largest'])
-        .onChange((value) => {
-          this.filterStars(value);
-        });
-    }
 
     // this.setStarNames();
     this.setConstelations();
@@ -198,59 +225,9 @@ export class Stars extends THREE.Points {
     }
   }
 
-  onUpdateGeometry() {
-    let newGeometry = new THREE.BufferGeometry();
-    const count = this.stars?.length;
-
-    const positions = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const colors = new Float32Array(count * 3);
-
-    for (let i = 0, j = 0; i < count * 3; i += 3, j++) {
-      positions[i] = this.stars[j].x;
-      positions[i + 1] = this.stars[j].y;
-      positions[i + 2] = this.stars[j].z;
-
-      sizes[j] = this.stars[j].mag;
-
-      const starColorRGB = bvToRgb(this.stars[j].ci);
-      colors[i] = starColorRGB[0];
-      colors[i + 1] = starColorRGB[1];
-      colors[i + 2] = starColorRGB[2];
-    }
-
-    newGeometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
-    newGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    newGeometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(positions, 3)
-    );
-
-    this.geometry.dispose(); // Dispose of the old geometry
-    this.geometry = newGeometry; // Assign the new geometry
-  }
-
-  filterStars(value) {
-    switch (value) {
-      case "all":
-        this.stars = this.visibleStars;
-        break;
-      case "closest":
-        this.stars = this.closestStars;
-        break;
-      case "brightest":
-        this.stars = this.brightestStars;
-        break;
-      case "hottest":
-        this.stars = this.hottestStars;
-        break;
-      case "largest":
-        this.stars = this.largestStars;
-        break;
-    }
-  
-    // Mets à jour la géométrie
-    this.onUpdateGeometry();
+  updateGeometry(newGeometry) {
+    this.geometry.dispose();
+    this.geometry = newGeometry;
   }
 
   setEarthTilt() {
@@ -259,6 +236,7 @@ export class Stars extends THREE.Points {
       (Math.PI / 180) * 23.5
     );
   }
+
   setStarNames() {
     for (let star of this.stars) {
       if (!star.proper) continue;
@@ -277,8 +255,9 @@ export class Stars extends THREE.Points {
       this.add(name);
     }
   }
+
   setConstelations() {
-    const constellationKeys = Object.keys(constelations);
+    const constellationKeys = Object.keys(constelationsPoints);
     
     for (const id of constellationKeys) {
       const constellation = constelationsPoints[id];
@@ -301,43 +280,6 @@ export class Stars extends THREE.Points {
 
     this.add(this.constelationsGroup);
   }
-
-  // setConstelations() {
-  //   const constellationKeys = Object.keys(constelations);
-    
-  //   for (const id of constellationKeys) {
-  //     const constellation = constelations[id];
-  //     const points = [];
-  //     for (let i = 0; i < constellation.count; i++) {
-  //       const starId = constellation.stars[i];
-  //       const star = this.stars.find((item) => item.hr === starId);
-
-  //       // For some reason not all the stars are present in the dataset
-  //       // at least not mapped up using the BSC star ID (that is mapped to hr in the HYG dataset
-  //       // we are using for stars)
-  //       if (!!star) {
-  //         points.push(star.x, star.y, star.z);
-  //       }
-  //     }
-
-  //     const geometry = new LineGeometry();
-  //     if(points.length >= 1) {
-  //       geometry.setPositions(points);
-  //     }
-  //     const matLine = new LineMaterial({
-  //       color: this.settings.constellationColor,
-  //       linewidth: this.settings.constellationLineWidth,
-  //       worldUnits: false,
-  //     });
-  //     matLine.resolution.set(window.innerWidth, window.innerHeight);
-
-  //     const line = new Line2(geometry, matLine);
-
-  //     this.constelationsGroup.add(line);
-  //   }
-
-  //   this.add(this.constelationsGroup);
-  // }
 
   setWireframe() {
     const geometry = new THREE.SphereGeometry(200, 50, 50);

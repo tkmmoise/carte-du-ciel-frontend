@@ -2,7 +2,6 @@ import * as THREE from "three";
 import * as dat from "lil-gui";
 import Stats from "stats.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { visibleStars } from "./data/visibleStarsFormatted.js";
 
 import { Stars } from "./Stars";
 
@@ -12,16 +11,15 @@ async function fetchStars() {
     const response = await fetch('http://localhost:3000/api/stars/filters');
     const allstars = await response.json();
 
-    //console.log('closestStars:', closestStars);
     return allstars;
-    //return { closestStars, brightestStars, hottestStars, largestStars };
   } catch (error) {
     console.error('Erreur lors du chargement des étoiles:', error);
   }
 }
 
 async function createSky() {
-  const { closestStars, brightestStars, hottestStars, largestStars } = await fetchStars();
+  const { visibleStars, closestStars, brightestStars, hottestStars, largestStars } = await fetchStars();
+
   /**
    * Base
   */
@@ -55,17 +53,20 @@ async function createSky() {
    * Starts
    */
   const stars = new Stars({
-    visibleStars: visibleStars,
-    closestStars: closestStars,
-    hottestStars: hottestStars,
-    largestStars: largestStars,
-    brightestStars: brightestStars,
+    data: {
+      visibleStars: visibleStars,
+      closestStars: closestStars,
+      hottestStars: hottestStars,
+      largestStars: largestStars,
+      brightestStars: brightestStars,
+    },
     debug: { active: true, gui: gui },
     settings: {
       starMin: 2.3,
       starMax: 13.9,
     },
   });
+
   // stars.scale.setScalar(4);
   scene.add(stars);
 
