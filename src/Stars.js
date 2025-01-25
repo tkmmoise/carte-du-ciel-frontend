@@ -260,6 +260,7 @@ export class Stars extends THREE.Points {
     this.popupElement.style.top = `${event.clientY + 10}px`;
   }
 
+  // Vérifie si une étoile est survolée
   checkForStarHover(camera) {
     this.raycaster.setFromCamera(this.mouse, camera);
   
