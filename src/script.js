@@ -3,12 +3,13 @@ import * as dat from "lil-gui";
 import Stats from "stats.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { apiConfig } from "../apiConfig";
 import { Stars } from "./Stars";
 
 // Charger les étoiles depuis l'API
 async function fetchStars() {
   try {
-    const response = await fetch('http://localhost:3000/api/stars/filters');
+    const response = await fetch(`${apiConfig.baseUrl}${apiConfig.stars.filters}`);
     const allstars = await response.json();
 
     return allstars;
@@ -42,6 +43,7 @@ async function createSky() {
   date.setMinutes(timeOfDay.minutes);
   date.setSeconds(timeOfDay.seconds);
 
+  // Add location and time controls
   gui.add(latLng, "x").min(-90).max(90).step(0.01).name("lat");
   gui.add(latLng, "y").min(-180).max(180).step(0.01).name("lng");
   gui.add(timeOfDay, "hour").min(0).max(24).step(0.001).name("Hour of day");
@@ -166,6 +168,9 @@ async function createSky() {
 
     // Update controls
     controls.update();
+
+    // Vérifiez les étoiles survolées
+    stars.checkForStarHover(camera);
 
     // Render
     renderer.render(scene, camera);

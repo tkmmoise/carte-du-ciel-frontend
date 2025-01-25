@@ -16,12 +16,14 @@ class StarsConstructor {
     this.debug = {
       active: false,
       gui: null,
+      showHelpers: true,
       ...params?.debug,
     };
 
     this.settings = {
       earthTilt: true,
       showConstellations: false,
+      showPopup: true,
       constellationColor: new THREE.Color(0xd1d9e6),
       constellationLineWidth: 1,
       attenuation: false,
@@ -167,7 +169,7 @@ class StarsConstructor {
         });
     }
   }
-
+  // Add closest, brightest, hottest stars filter
   filterStars(value) {
     switch (value) {
       case "all":
@@ -223,12 +225,101 @@ export class Stars extends THREE.Points {
       this.setWireframe();
       this.setCardinalDirections();
     }
+
+    if (this.settings.showPopup) {
+      this.initPopUp();
+    }
+
+    //this.setPlanets();
+  }
+
+  initPopUp() {
+    this.raycaster = new THREE.Raycaster(); // Ajout du Raycaster
+    this.mouse = new THREE.Vector2(); // Coordonnées de la souris
+
+    this.popupElement = document.createElement("div"); // Élément pour le pop-up
+    this.popupElement.style.position = "absolute";
+    this.popupElement.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+    this.popupElement.style.color = "white";
+    this.popupElement.style.padding = "5px";
+    this.popupElement.style.borderRadius = "5px";
+    this.popupElement.style.pointerEvents = "none";
+    this.popupElement.style.display = "none"; // Caché par défaut
+    document.body.appendChild(this.popupElement);
+
+    window.addEventListener("mousemove", (event) => this.onMouseMove(event));
+  }
+
+  onMouseMove(event) {
+    // Conversion des coordonnées de la souris en coordonnées normalisées
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  
+    // Met à jour la position du pop-up
+    this.popupElement.style.left = `${event.clientX + 10}px`;
+    this.popupElement.style.top = `${event.clientY + 10}px`;
+  }
+
+  checkForStarHover(camera) {
+    this.raycaster.setFromCamera(this.mouse, camera);
+  
+    const intersects = this.raycaster.intersectObject(this, true);
+  
+    if (intersects.length > 0) {
+      const intersectedStar = intersects[0];
+      const starIndex = intersectedStar.index;
+  
+      if (starIndex !== undefined) {
+        const star = this.stars[starIndex];
+        //console.log(star);
+        if (star) {
+          this.popupElement.style.display = "block";
+          this.popupElement.innerHTML = `
+            <strong>Id :</strong> ${star.hr || "Inconnu"}<br>
+            <strong>Mag :</strong> ${star.mag || "Inconnu"}<br>
+            <strong>Nom :</strong> ${star.proper || "Inconnu"}<br>
+            <strong>Constellation :</strong> ${star.con || "Inconnue"}
+          `;
+          return;
+        }
+      }
+    }
+  
+    this.popupElement.style.display = "none"; // Cache le pop-up si aucune étoile n'est survolée
   }
 
   updateGeometry(newGeometry) {
     this.geometry.dispose();
     this.geometry = newGeometry;
   }
+
+  // setPlanets() {
+  //   const planetGroup = new THREE.Group();
+  
+  //   planets.forEach((planet) => {
+  //     const geometry = new THREE.SphereGeometry(planet.distanceFromSun / 1000, 32, 32); // Adjust size
+  //     const material = new THREE.MeshBasicMaterial({ color: bvToRgb(planet.ci) });
+  //     const mesh = new THREE.Mesh(geometry, material);
+  
+  //     // Set position
+  //     mesh.position.set(planet.x * 1, planet.y * 1, planet.z * 1);
+  
+  //     // Create a label for the planet
+  //     const label = new PointTextHelper();
+  //     label.display({
+  //       text: planet.name,
+  //       color: "yellow",
+  //       size: 5,
+  //       position: { x: mesh.position.x, y: mesh.position.y + 10, z: mesh.position.z },
+  //     });
+  
+  //     planetGroup.add(mesh);
+  //     planetGroup.add(label);
+  //   });
+  
+  //   this.add(planetGroup);
+  // }
+  
 
   setEarthTilt() {
     this.quaternion.setFromAxisAngle(
