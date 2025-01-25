@@ -169,7 +169,7 @@ class StarsConstructor {
         });
     }
   }
-  // Add closest, brightest stars filter
+  // Add closest, brightest, hottest stars filter
   filterStars(value) {
     switch (value) {
       case "all":
