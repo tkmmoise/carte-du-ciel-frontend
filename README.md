@@ -26,6 +26,12 @@ cd carte-du-ciel-frontend
 git clone https://github.com/tkmmoise/carte-du-ciel-frontend
 cd carte-du-ciel-frontend
  ```
+**Liste des dépendances**
+- @jniac/three-point-text-helper
+- lil-gui
+- suncalc
+- three
+- three-starmap
 
 3. **Lancer l'application :**
 ```bash
