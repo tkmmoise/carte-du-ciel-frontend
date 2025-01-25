@@ -347,6 +347,7 @@ export class Stars extends THREE.Points {
     }
   }
 
+  // Set constellations
   setConstelations() {
     const constellationKeys = Object.keys(constelationsPoints);
     
