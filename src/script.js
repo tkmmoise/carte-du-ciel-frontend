@@ -62,7 +62,7 @@ async function createSky() {
       largestStars: largestStars,
       brightestStars: brightestStars,
     },
-    debug: { active: true, gui: gui },
+    debug: { active: false, gui: gui },
     settings: {
       starMin: 2.3,
       starMax: 13.9,

@@ -16,7 +16,7 @@ class StarsConstructor {
     this.debug = {
       active: false,
       gui: null,
-      showHelpers: true,
+      showHelpers: false,
       ...params?.debug,
     };
 
